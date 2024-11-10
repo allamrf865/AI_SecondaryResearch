@@ -9,9 +9,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import nltk
 
-# Download necessary NLTK data once, if not already available
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
+# Ensure necessary NLTK data is downloaded
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
@@ -27,8 +34,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='header'>📚 Literature Review Quality Analyzer 📚</div>", unsafe_allow_html=True)
-st.write("Upload a PDF file, and let the magic of AI do the rest! ✨")
+st.markdown("<div class='header'>📚 Secondary Reseacrh Quality Analyzer 📚 </div>", unsafe_allow_html=True)
+st.write("Upload a PDF file, and let the magic of AI do the rest! AI by Allam FKUi 2022✨")
 
 # Footer Branding
 st.markdown("<div class='footer'>AI by Allam Rafi FKUI 2022</div>", unsafe_allow_html=True)
@@ -78,7 +85,7 @@ if uploaded_file is not None:
 
     # Keyword Relevance with TF-IDF
     def keyword_relevance(text):
-        tfidf_vectorizer = TfidfVectorizer(max_features=100, stop_words="english")
+        tfidf_vectorizer = TfidfVectorizer(max_features=50, stop_words="english")
         tfidf_matrix = tfidf_vectorizer.fit_transform([text])
         keywords = dict(zip(tfidf_vectorizer.get_feature_names_out(), tfidf_matrix.toarray()[0]))
         wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(keywords)
