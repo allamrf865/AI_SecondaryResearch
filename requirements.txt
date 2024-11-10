@@ -1,7 +1,6 @@
 streamlit
-PyMuPDF
+pdfplumber
 textstat
-nltk
 scikit-learn
 wordcloud
 matplotlib
