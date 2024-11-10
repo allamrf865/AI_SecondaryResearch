@@ -1,11 +1,11 @@
 import streamlit as st
-import fitz  # PyMuPDF for PDF handling
+import pdfplumber
 import textstat
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-import re
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
@@ -34,19 +34,18 @@ if uploaded_file is not None:
     st.markdown("<div class='loader'></div>", unsafe_allow_html=True)  # Display loader during processing
     st.write("Analyzing... Please wait a moment!")
 
-    # Extract text from the uploaded PDF
+    # Extract text from the uploaded PDF using pdfplumber
     def extract_text_from_pdf(file):
         text = ""
-        file_bytes = file.read()  # Read the file as bytes
-        with fitz.open("pdf", file_bytes) as pdf:
-            for page in pdf:
-                text += page.get_text()
+        with pdfplumber.open(file) as pdf:
+            for page in pdf.pages:
+                text += page.extract_text() + "\n"
         return text
 
     # Extract text from PDF
     text = extract_text_from_pdf(uploaded_file)
     
-    # Simple sentence tokenization without NLTK
+    # Simple sentence tokenization using regex
     sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
     words = [word.lower() for word in re.findall(r'\b\w+\b', text) if word.isalnum()]
 
