@@ -1,0 +1,8 @@
+streamlit
+pymupdf
+textblob
+scikit-learn
+textstat
+nltk
+matplotlib
+wordcloud
