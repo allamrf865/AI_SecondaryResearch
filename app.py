@@ -82,11 +82,19 @@ if uploaded_file is not None:
                 score = 0  # Default score if analysis fails
             return score, avg_cohesion
 
-        # Keyword Relevance with TF-IDF
+        # Keyword Relevance with TF-IDF and WordCloud generation
         def keyword_relevance(text):
+            if not text.strip():  # Check if text is empty
+                return 0, {}, None
+
             try:
                 tfidf_vectorizer = TfidfVectorizer(max_features=50, stop_words="english")
                 tfidf_matrix = tfidf_vectorizer.fit_transform([text])
+                
+                # Check if TF-IDF matrix is empty
+                if tfidf_matrix.shape[1] == 0:
+                    return 0, {}, None
+
                 keywords = dict(zip(tfidf_vectorizer.get_feature_names_out(), tfidf_matrix.toarray()[0]))
                 
                 # Generate WordCloud
@@ -137,4 +145,4 @@ if uploaded_file is not None:
             fig = plot_wordcloud(wordcloud)
             st.pyplot(fig)
         else:
-            st.write("Keyword relevance analysis failed.")
+            st.write("Keyword relevance analysis failed or insufficient data.")
