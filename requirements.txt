@@ -2,5 +2,4 @@ streamlit
 pdfplumber
 textstat
 scikit-learn
-wordcloud
 matplotlib
