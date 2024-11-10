@@ -2,10 +2,8 @@ import streamlit as st
 import pdfplumber
 import textstat
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
@@ -82,46 +80,13 @@ if uploaded_file is not None:
                 score = 0  # Default score if analysis fails
             return score, avg_cohesion
 
-        # Keyword Relevance with TF-IDF and WordCloud generation
-        def keyword_relevance(text):
-            if not text.strip():  # Check if text is empty
-                return 0, {}, None
-
-            try:
-                tfidf_vectorizer = TfidfVectorizer(max_features=50, stop_words="english")
-                tfidf_matrix = tfidf_vectorizer.fit_transform([text])
-                
-                # Check if TF-IDF matrix is empty
-                if tfidf_matrix.shape[1] == 0:
-                    return 0, {}, None
-
-                keywords = dict(zip(tfidf_vectorizer.get_feature_names_out(), tfidf_matrix.toarray()[0]))
-                
-                # Generate WordCloud
-                wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(keywords)
-                
-                keyword_score = sum(tfidf_matrix.toarray()[0]) / len(tfidf_matrix.toarray()[0]) * 100
-            except Exception:
-                keywords = {}
-                keyword_score = 0
-                wordcloud = None
-            return keyword_score, keywords, wordcloud
-
-        # Convert WordCloud to matplotlib figure
-        def plot_wordcloud(wordcloud):
-            fig, ax = plt.subplots()
-            ax.imshow(wordcloud, interpolation="bilinear")
-            ax.axis("off")
-            return fig
-
         # Perform analysis on text
         readability_score, fk_score = readability_score(text)
         structure_score, found_sections = structure_completeness(text)
         cohesion_score, avg_cohesion = cohesion_analysis(sentences)
-        keyword_score, keywords, wordcloud = keyword_relevance(text)
 
         # Calculate final quality score as an average of individual scores
-        final_score = (readability_score + structure_score + cohesion_score + keyword_score) / 4
+        final_score = (readability_score + structure_score + cohesion_score) / 3
 
         # Determine quality level based on the cutoff standards
         if final_score > 85:
@@ -138,11 +103,3 @@ if uploaded_file is not None:
         st.write(f"**Readability Score**: {readability_score} (Flesch-Kincaid Grade: {fk_score})")
         st.write(f"**Structure Completeness**: {structure_score}% - {found_sections}")
         st.write(f"**Cohesion Score**: {cohesion_score} (Avg Similarity: {avg_cohesion:.2f})")
-        
-        # Display the WordCloud if available
-        if wordcloud:
-            st.write("### Keyword Relevance")
-            fig = plot_wordcloud(wordcloud)
-            st.pyplot(fig)
-        else:
-            st.write("Keyword relevance analysis failed or insufficient data.")
