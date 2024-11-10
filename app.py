@@ -4,6 +4,7 @@ import textstat
 import re
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
@@ -103,3 +104,17 @@ if uploaded_file is not None:
         st.write(f"**Readability Score**: {readability_score} (Flesch-Kincaid Grade: {fk_score})")
         st.write(f"**Structure Completeness**: {structure_score}% - {found_sections}")
         st.write(f"**Cohesion Score**: {cohesion_score} (Avg Similarity: {avg_cohesion:.2f})")
+
+        # Plot a bar chart for the scores
+        st.write("### Score Overview")
+        metrics = ["Readability", "Structure Completeness", "Cohesion"]
+        scores = [readability_score, structure_score, cohesion_score]
+        
+        plt.figure(figsize=(8, 5))
+        plt.bar(metrics, scores, color=['blue', 'green', 'orange'])
+        plt.ylim(0, 100)
+        plt.xlabel("Metrics")
+        plt.ylabel("Scores")
+        plt.title("Scores Overview for Literature Review Analysis")
+        
+        st.pyplot(plt)
