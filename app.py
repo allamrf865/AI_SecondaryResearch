@@ -1,24 +1,11 @@
 import streamlit as st
 import fitz  # PyMuPDF for PDF handling
 import textstat
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize, sent_tokenize
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import nltk
-
-# Ensure necessary NLTK data is downloaded
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import re
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
@@ -34,8 +21,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='header'>📚 Secondary Reseacrh Quality Analyzer 📚 </div>", unsafe_allow_html=True)
-st.write("Upload a PDF file, and let the magic of AI do the rest! AI by Allam FKUi 2022✨")
+st.markdown("<div class='header'>📚 Literature Review Quality Analyzer 📚</div>", unsafe_allow_html=True)
+st.write("Upload a PDF file, and let the magic of AI do the rest! ✨")
 
 # Footer Branding
 st.markdown("<div class='footer'>AI by Allam Rafi FKUI 2022</div>", unsafe_allow_html=True)
@@ -59,11 +46,9 @@ if uploaded_file is not None:
     # Extract text from PDF
     text = extract_text_from_pdf(uploaded_file)
     
-    # Text preprocessing: tokenization and stopword removal
-    sentences = sent_tokenize(text)
-    words = [word.lower() for word in word_tokenize(text) if word.isalnum()]
-    stop_words = set(stopwords.words('english'))
-    words = [word for word in words if word not in stop_words]
+    # Simple sentence tokenization without NLTK
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
+    words = [word.lower() for word in re.findall(r'\b\w+\b', text) if word.isalnum()]
 
     # Readability Analysis
     def readability_score(text):
