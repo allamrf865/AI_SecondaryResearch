@@ -4,17 +4,19 @@ import textstat
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 from wordcloud import WordCloud
-import nltk
 import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import nltk
 
 # Download necessary NLTK data once, if not already available
-nltk.download('punkt')
-nltk.download('stopwords')
+nltk.download('punkt', quiet=True)
+nltk.download('stopwords', quiet=True)
 
 # Set up page configurations and basic styles
 st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
 
-# Custom styling with basic HTML/CSS for lightweight animations
+# Custom styling with HTML/CSS for lightweight animations
 st.markdown("""
     <style>
     body { font-family: 'Comic Sans MS', sans-serif; }
@@ -41,11 +43,13 @@ if uploaded_file is not None:
     # Extract text from the uploaded PDF
     def extract_text_from_pdf(file):
         text = ""
-        with fitz.open(stream=file, filetype="pdf") as pdf:
+        file_bytes = file.read()  # Read the file as bytes
+        with fitz.open("pdf", file_bytes) as pdf:
             for page in pdf:
                 text += page.get_text()
         return text
 
+    # Extract text from PDF
     text = extract_text_from_pdf(uploaded_file)
     
     # Text preprocessing: tokenization and stopword removal
@@ -65,16 +69,14 @@ if uploaded_file is not None:
         found_sections = {section: (section in text.lower()) for section in sections}
         return sum(found_sections.values()) / len(sections) * 100, found_sections
 
-    # Cohesion Analysis
+    # Cohesion Analysis using cosine similarity
     def cohesion_analysis(sentences):
-        from sklearn.feature_extraction.text import CountVectorizer
-        from sklearn.metrics.pairwise import cosine_similarity
         vectorizer = CountVectorizer().fit_transform(sentences)
         vectors = vectorizer.toarray()
         avg_cohesion = cosine_similarity(vectors).mean()
         return 100 if avg_cohesion >= 0.5 else 70 if avg_cohesion >= 0.3 else 30, avg_cohesion
 
-    # Keyword Relevance with WordCloud
+    # Keyword Relevance with TF-IDF
     def keyword_relevance(text):
         tfidf_vectorizer = TfidfVectorizer(max_features=100, stop_words="english")
         tfidf_matrix = tfidf_vectorizer.fit_transform([text])
@@ -87,6 +89,17 @@ if uploaded_file is not None:
     structure_score, found_sections = structure_completeness(text)
     cohesion_score, avg_cohesion = cohesion_analysis(sentences)
     keyword_score, keywords, wordcloud = keyword_relevance(text)
+
+    # Calculate final quality score as an average of individual scores
+    final_score = (readability_score + structure_score + cohesion_score + keyword_score) / 4
+
+    # Determine quality level based on the new cutoff standards
+    if final_score > 85:
+        quality_level = "High"
+    elif 60 <= final_score <= 85:
+        quality_level = "Standard"
+    else:
+        quality_level = "Low"
 
     # Display Results
     st.subheader("Analysis Results:")
