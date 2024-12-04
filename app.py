@@ -43,8 +43,27 @@ review_type = st.selectbox("Select the review type:",
 # Enable analysis button only after file is uploaded and review type is selected
 analyze_button = st.button("Analyze", disabled=(not uploaded_file or review_type == "Select Review Type"))
 
+# Add a flag to track if the analysis is complete
+analysis_complete = False
+
 if analyze_button:
+    # Set the flag to False initially, meaning analysis is ongoing
+    analysis_complete = False
     st.write("Analyzing... Please wait a moment!")
+
+    # Perform the analysis
+    # (The code for extracting text, performing analysis, etc., goes here...)
+
+    # After the analysis is done, set the flag to True
+    analysis_complete = True
+
+    # Update the message when the analysis is complete
+    if analysis_complete:
+        st.write("Analysis Completed! 🎉")
+
+    # Now, you can display all the analysis results as usual
+    # (The code for displaying results goes here...)
+
 
     # Function to extract text from PDF
     def extract_text_from_pdf(file):
