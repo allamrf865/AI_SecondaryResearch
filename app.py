@@ -1,76 +1,135 @@
 import streamlit as st
 import pdfplumber
-import textstat
+import docx
 import re
+import textstat
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
+import numpy as np
+from typing import List, Tuple
 
-# Set up page configurations and basic styles
-st.set_page_config(page_title="Literature Review Quality Analyzer", layout="centered")
+# Set up page configurations
+st.set_page_config(page_title="Review Quality Analyzer", layout="centered")
 
-# Custom styling with HTML/CSS for lightweight animations
+# Custom styling with HTML/CSS
 st.markdown("""
     <style>
     body { font-family: 'Comic Sans MS', sans-serif; }
     .header { font-size: 32px; color: #333; font-weight: bold; text-align: center; margin-bottom: 5px; }
     .footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: #c3cfe2; color: #333; text-align: center; padding: 10px; font-size: 16px; font-weight: bold; }
-    .loader { border: 8px solid #f3f3f3; border-radius: 50%; border-top: 8px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: auto; display: block; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .watermark { position: absolute; bottom: 20px; right: 20px; font-size: 10px; color: rgba(0, 0, 0, 0.1); font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='header'>📚 Literature Review Quality Analyzer 📚</div>", unsafe_allow_html=True)
-st.write("Upload a PDF file, and let the magic of AI do the rest! ✨")
+# Header and instructions
+st.markdown("<h1 class='header'>Review Quality Analyzer</h1>", unsafe_allow_html=True)
+st.write("Upload a PDF or Word file, select the review type, and get a detailed quality analysis! ✨")
 
 # Footer Branding
 st.markdown("<div class='footer'>AI by Allam Rafi FKUI 2022</div>", unsafe_allow_html=True)
 
-# File uploader widget
-uploaded_file = st.file_uploader("Upload your PDF here", type="pdf")
+# Watermark
+st.markdown("<div class='watermark'>Watermark: Allam Rafi FKUI 2022</div>", unsafe_allow_html=True)
 
-if uploaded_file is not None:
-    st.markdown("<div class='loader'></div>", unsafe_allow_html=True)  # Display loader during processing
+# File uploader widget
+uploaded_file = st.file_uploader("Upload your PDF or Word document", type=["pdf", "docx"])
+
+# Document type selection
+review_type = st.selectbox("Select the review type:", 
+                           ["Select Review Type", "Literature Review", "Systematic Review", "Meta Analysis", "Network Meta Analysis", "EBCP", "EBCR"])
+
+# Enable analysis button only after file is uploaded and review type is selected
+analyze_button = st.button("Analyze", disabled=(not uploaded_file or review_type == "Select Review Type"))
+
+if analyze_button:
     st.write("Analyzing... Please wait a moment!")
 
-    # Extract text from the uploaded PDF using pdfplumber
+    # Function to extract text from PDF
     def extract_text_from_pdf(file):
         text = ""
         try:
             with pdfplumber.open(file) as pdf:
                 for page in pdf.pages:
                     page_text = page.extract_text()
-                    if page_text:  # Only add non-empty pages
+                    if page_text:
                         text += page_text + "\n"
-        except Exception as e:
+        except Exception:
             st.error("Error reading the PDF file.")
-            return None
-        return text.strip()  # Remove any extra whitespace
+        return text.strip()
 
-    # Extract and clean text from PDF
-    text = extract_text_from_pdf(uploaded_file)
+    # Function to extract text from Word document
+    def extract_text_from_docx(file):
+        text = ""
+        try:
+            doc = docx.Document(file)
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        except Exception:
+            st.error("Error reading the Word file.")
+        return text.strip()
+
+    # Extract text from the uploaded file
+    if uploaded_file.type == "application/pdf":
+        text = extract_text_from_pdf(uploaded_file)
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        text = extract_text_from_docx(uploaded_file)
+
+    # Basic checks for empty text
     if not text:
-        st.error("No text extracted from PDF.")
+        st.error("No text extracted from the document.")
     else:
-        # Simple sentence tokenization using regex
+        # Process text (lowercasing, removing unwanted characters)
         sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
         words = [word.lower() for word in re.findall(r'\b\w+\b', text) if word.isalnum()]
 
-        # Readability Analysis with refined scoring
-        def readability_score(text):
+        # Readability analysis
+        def readability_score(text: str) -> Tuple[int, float]:
             fk_score = textstat.flesch_kincaid_grade(text)
             score = 100 if fk_score <= 10 else 70 if fk_score <= 14 else 30
             return score, fk_score
 
-        # Structure Completeness Analysis
-        def structure_completeness(text):
-            sections = ["introduction", "methods", "results", "discussion", "conclusion"]
-            found_sections = {section: (section in text.lower()) for section in sections}
-            completeness_score = sum(found_sections.values()) / len(sections) * 100
+        # Evidence Analysis: Number and diversity of references
+        def evidence_analysis(text: str) -> Tuple[int, float]:
+            references = re.findall(r'\b(?:https?|www)\S+', text)  # Simple regex to find URLs or references
+            diversity_score = min(100, len(set(references)) * 10)  # Simple metric based on unique references
+            return len(references), diversity_score
+
+        # Methodology analysis: Check for methodological references
+        def methodology_analysis(text: str) -> Tuple[int, str]:
+            methodology_terms = ["methodology", "statistical method", "sampling", "effect size"]
+            methodology_score = sum(term in text.lower() for term in methodology_terms)
+            methodology_quality = "Good" if methodology_score >= 2 else "Average"
+            return methodology_score, methodology_quality
+
+        # Bias Analysis: Publication and selection bias (very simplified)
+        def bias_analysis(text: str) -> Tuple[str, str]:
+            bias_score = "Low" if "systematic" in text.lower() else "High"
+            publication_bias = "Possible" if "publication bias" in text.lower() else "Unlikely"
+            return bias_score, publication_bias
+
+        # Scope of Research: Checking if the scope is well-defined
+        def scope_of_research(text: str) -> str:
+            if "limitations" in text.lower():
+                return "Wide Scope, but Some Gaps"
+            return "Scope Seems Limited"
+
+        # Structural Completeness based on the review type
+        def structure_completeness(text: str, review_type: str) -> Tuple[int, dict]:
+            sections = {
+                "Literature Review": ["introduction", "literature review", "methodology", "discussion", "conclusion"],
+                "Systematic Review": ["introduction", "methods", "results", "discussion", "conclusion", "references"],
+                "Meta Analysis": ["introduction", "methods", "results", "discussion", "references"],
+                "Network Meta Analysis": ["introduction", "methods", "results", "discussion", "references"],
+                "EBCP": ["introduction", "methodology", "clinical recommendations", "discussion", "conclusion"],
+                "EBCR": ["introduction", "methods", "results", "conclusion"]
+            }
+            found_sections = {section: (section in text.lower()) for section in sections.get(review_type, [])}
+            completeness_score = sum(found_sections.values()) / len(found_sections) * 100
             return completeness_score, found_sections
 
-        # Cohesion Analysis using cosine similarity
-        def cohesion_analysis(sentences):
+        # Cohesion analysis: Using Cosine Similarity
+        def cohesion_analysis(sentences: List[str]) -> Tuple[int, float]:
             try:
                 vectorizer = CountVectorizer().fit_transform(sentences)
                 vectors = vectorizer.toarray()
@@ -78,43 +137,46 @@ if uploaded_file is not None:
                 score = 100 if avg_cohesion >= 0.5 else 70 if avg_cohesion >= 0.3 else 30
             except Exception:
                 avg_cohesion = 0
-                score = 0  # Default score if analysis fails
+                score = 0
             return score, avg_cohesion
 
-        # Perform analysis on text
-        readability_score, fk_score = readability_score(text)
-        structure_score, found_sections = structure_completeness(text)
-        cohesion_score, avg_cohesion = cohesion_analysis(sentences)
+        # Perform analysis on document
+        readability_result, fk_score = readability_score(text)
+        evidence_count, evidence_diversity = evidence_analysis(text)
+        methodology_score, methodology_quality = methodology_analysis(text)
+        bias_score, publication_bias = bias_analysis(text)
+        scope_result = scope_of_research(text)
+        structure_result, found_sections = structure_completeness(text, review_type)
+        cohesion_result, avg_cohesion = cohesion_analysis(sentences)
 
-        # Calculate final quality score as an average of individual scores
-        final_score = (readability_score + structure_score + cohesion_score) / 3
+        # Final score
+        final_score = (readability_result + evidence_diversity + methodology_score + cohesion_result) / 4
+        quality_level = "High" if final_score > 85 else "Standard" if final_score >= 70 else "Low"
 
-        # Determine quality level based on the cutoff standards
-        if final_score > 85:
-            quality_level = "High"
-        elif 60 <= final_score <= 85:
-            quality_level = "Standard"
-        else:
-            quality_level = "Low"
-
-        # Display Results
+        # Display results
         st.subheader("Analysis Results:")
-        st.markdown(f"**Overall Quality Level**: {quality_level} ({final_score:.2f}/100)")
-        st.write("### Detailed Quality Metrics")
-        st.write(f"**Readability Score**: {readability_score} (Flesch-Kincaid Grade: {fk_score})")
-        st.write(f"**Structure Completeness**: {structure_score}% - {found_sections}")
-        st.write(f"**Cohesion Score**: {cohesion_score} (Avg Similarity: {avg_cohesion:.2f})")
+        st.write(f"**Readability Score (FKG)**: {fk_score} (Grade: {readability_result})")
+        st.write(f"**Number of References**: {evidence_count}")
+        st.write(f"**Evidence Diversity Score**: {evidence_diversity}")
+        st.write(f"**Methodology Quality**: {methodology_quality}")
+        st.write(f"**Bias in Selection**: {bias_score}")
+        st.write(f"**Publication Bias**: {publication_bias}")
+        st.write(f"**Research Scope**: {scope_result}")
+        st.write(f"**Structure Completeness**: {structure_result}% - {found_sections}")
+        st.write(f"**Cohesion Score**: {avg_cohesion:.2f}")
+        st.write(f"**Final Quality Level**: {quality_level}")
+        st.write("### Recommendations:")
+        st.write("- Ensure clear explanation of methodology and effect size.")
+        st.write("- Include diverse sources and references.")
 
-        # Plot a bar chart for the scores
+        # Visualize results
         st.write("### Score Overview")
-        metrics = ["Readability", "Structure Completeness", "Cohesion"]
-        scores = [readability_score, structure_score, cohesion_score]
+        metrics = ["Readability", "Evidence Diversity", "Methodology Quality", "Cohesion"]
+        scores = [readability_result, evidence_diversity, methodology_score, cohesion_result]
         
         plt.figure(figsize=(8, 5))
-        plt.bar(metrics, scores, color=['blue', 'green', 'orange'])
+        plt.bar(metrics, scores, color=['blue', 'green', 'red', 'purple'])
+        plt.title("Document Analysis Scores")
+        plt.ylabel("Score")
         plt.ylim(0, 100)
-        plt.xlabel("Metrics")
-        plt.ylabel("Scores")
-        plt.title("Scores Overview for Literature Review Analysis")
-        
-        st.pyplot(plt)
+        st.pyplot()
