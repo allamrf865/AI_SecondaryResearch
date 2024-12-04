@@ -89,13 +89,27 @@ if analyze_button:
             score = 100 if fk_score <= 10 else 70 if fk_score <= 14 else 30
             return score, fk_score
 
-        # Evidence Analysis: Number and diversity of references
-        def evidence_analysis(text: str) -> Tuple[int, float]:
-            references = re.findall(r'\b(?:https?|www)\S+', text)  # Simple regex to find URLs or references
-             # Regex untuk menangkap URL, DOI, dan referensi dalam format [1], [2], atau [author, year]
-            references = re.findall(r'(https?://\S+|doi:\S+|[A-Za-z]+,\s?\d{4}|[A-Za-z0-9]+\s?\[\d+\])', text)
-            diversity_score = min(100, len(set(references)) * 10)  # Simple metric based on unique references
-            return len(references), diversity_score
+       # Function to analyze evidence (references)
+def evidence_analysis(text: str) -> Tuple[int, float]:
+    # Menangkap referensi URL dan DOI
+    url_doi_references = re.findall(r'\b(?:https?|www)\S+|doi:\S+', text)
+    
+    # Menangkap referensi berupa penulis dan tahun (Author, Year format)
+    author_year_references = re.findall(r'[A-Za-z]+(?:\s[A-Za-z]+)*,\s?\d{4}', text)
+    
+    # Menangkap referensi dalam format [1], [2], [3], dll.
+    number_references = re.findall(r'\[\d+\]', text)
+
+    # Gabungkan semua jenis referensi menjadi satu set untuk mendapatkan referensi unik
+    all_references = set(url_doi_references + author_year_references + number_references)
+
+    # Menghitung jumlah referensi unik
+    num_unique_references = len(all_references)
+    
+    # Skor keberagaman referensi
+    diversity_score = min(100, num_unique_references * 10)  # Skor maksimal 100 berdasarkan referensi unik
+    
+    return num_unique_references, diversity_score
 
         # Methodology analysis: Check for methodological references
         def methodology_analysis(text: str) -> Tuple[int, str]:
