@@ -89,12 +89,13 @@ if analyze_button:
             score = 100 if fk_score <= 10 else 70 if fk_score <= 14 else 30
             return score, fk_score
 
-# Evidence Analysis: Menangkap berbagai bentuk referensi
-def evidence_analysis(text: str) -> Tuple[int, float]:
-    # Regex untuk menangkap URL, DOI, dan referensi dalam format [1], [2], atau [author, year]
-    references = re.findall(r'(https?://\S+|doi:\S+|[A-Za-z]+,\s?\d{4}|[A-Za-z0-9]+\s?\[\d+\])', text)
-    diversity_score = min(100, len(set(references)) * 10)  # Skor keberagaman berdasarkan referensi unik
-    return len(references), diversity_score
+        # Evidence Analysis: Number and diversity of references
+        def evidence_analysis(text: str) -> Tuple[int, float]:
+            references = re.findall(r'\b(?:https?|www)\S+', text)  # Simple regex to find URLs or references
+             # Regex untuk menangkap URL, DOI, dan referensi dalam format [1], [2], atau [author, year]
+            references = re.findall(r'(https?://\S+|doi:\S+|[A-Za-z]+,\s?\d{4}|[A-Za-z0-9]+\s?\[\d+\])', text)
+            diversity_score = min(100, len(set(references)) * 10)  # Simple metric based on unique references
+            return len(references), diversity_score
 
         # Methodology analysis: Check for methodological references
         def methodology_analysis(text: str) -> Tuple[int, str]:
