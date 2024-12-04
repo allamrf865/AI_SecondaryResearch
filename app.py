@@ -54,8 +54,8 @@ if analyze_button:
                     page_text = page.extract_text()
                     if page_text:
                         text += page_text + "\n"
-        except Exception:
-            st.error("Error reading the PDF file.")
+        except Exception as e:
+            st.error(f"Error reading the PDF file: {e}")
         return text.strip()
 
     # Function to extract text from Word document
@@ -65,8 +65,8 @@ if analyze_button:
             doc = docx.Document(file)
             for para in doc.paragraphs:
                 text += para.text + "\n"
-        except Exception:
-            st.error("Error reading the Word file.")
+        except Exception as e:
+            st.error(f"Error reading the Word file: {e}")
         return text.strip()
 
     # Extract text from the uploaded file
@@ -89,27 +89,27 @@ if analyze_button:
             score = 100 if fk_score <= 10 else 70 if fk_score <= 14 else 30
             return score, fk_score
 
-       # Function to analyze evidence (references)
-def evidence_analysis(text: str) -> Tuple[int, float]:
-    # Menangkap referensi URL dan DOI
-    url_doi_references = re.findall(r'\b(?:https?|www)\S+|doi:\S+', text)
-    
-    # Menangkap referensi berupa penulis dan tahun (Author, Year format)
-    author_year_references = re.findall(r'[A-Za-z]+(?:\s[A-Za-z]+)*,\s?\d{4}', text)
-    
-    # Menangkap referensi dalam format [1], [2], [3], dll.
-    number_references = re.findall(r'\[\d+\]', text)
+        # Function to analyze evidence (references)
+        def evidence_analysis(text: str) -> Tuple[int, float]:
+            # Menangkap referensi URL dan DOI
+            url_doi_references = re.findall(r'\b(?:https?|www)\S+|doi:\S+', text)
+            
+            # Menangkap referensi berupa penulis dan tahun (Author, Year format)
+            author_year_references = re.findall(r'[A-Za-z]+(?:\s[A-Za-z]+)*,\s?\d{4}', text)
+            
+            # Menangkap referensi dalam format [1], [2], [3], dll.
+            number_references = re.findall(r'\[\d+\]', text)
 
-    # Gabungkan semua jenis referensi menjadi satu set untuk mendapatkan referensi unik
-    all_references = set(url_doi_references + author_year_references + number_references)
+            # Gabungkan semua jenis referensi menjadi satu set untuk mendapatkan referensi unik
+            all_references = set(url_doi_references + author_year_references + number_references)
 
-    # Menghitung jumlah referensi unik
-    num_unique_references = len(all_references)
-    
-    # Skor keberagaman referensi
-    diversity_score = min(100, num_unique_references * 10)  # Skor maksimal 100 berdasarkan referensi unik
-    
-    return num_unique_references, diversity_score
+            # Menghitung jumlah referensi unik
+            num_unique_references = len(all_references)
+            
+            # Skor keberagaman referensi
+            diversity_score = min(100, num_unique_references * 10)  # Skor maksimal 100 berdasarkan referensi unik
+            
+            return num_unique_references, diversity_score
 
         # Methodology analysis: Check for methodological references
         def methodology_analysis(text: str) -> Tuple[int, str]:
