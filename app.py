@@ -46,10 +46,15 @@ analyze_button = st.button("Analyze", disabled=(not uploaded_file or review_type
 # Add a flag to track if the analysis is complete
 analysis_complete = False
 
+# Add a flag to track if the analysis is complete
+analysis_complete = False
+
+# Use st.empty() to create a placeholder for the analyzing message
+status_placeholder = st.empty()
+
 if analyze_button:
-    # Set the flag to False initially, meaning analysis is ongoing
-    analysis_complete = False
-    st.write("Analyzing... Please wait a moment!")
+    # Show the "Analyzing..." message
+    status_placeholder.text("Analyzing... Please wait a moment!")
 
     # Perform the analysis
     # (The code for extracting text, performing analysis, etc., goes here...)
@@ -57,13 +62,9 @@ if analyze_button:
     # After the analysis is done, set the flag to True
     analysis_complete = True
 
-    # Update the message when the analysis is complete
-    if analysis_complete:
-        st.write("Analysis Completed! 🎉")
-
-    # Now, you can display all the analysis results as usual
-    # (The code for displaying results goes here...)
-
+    # Clear the "Analyzing..." message and show "Analysis Completed!"
+    status_placeholder.empty()  # Clear the previous message
+    st.write("Analysis Completed! 🎉")
 
     # Function to extract text from PDF
     def extract_text_from_pdf(file):
