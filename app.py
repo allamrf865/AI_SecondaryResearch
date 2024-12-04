@@ -11,7 +11,7 @@ from typing import List, Tuple
 from wordcloud import WordCloud
 
 # Set up page configurations
-st.set_page_config(page_title="Review Quality Analyzer", layout="centered")
+st.set_page_config(page_title="📚Review Quality Analyzer📚", layout="centered")
 
 # Custom styling with HTML/CSS
 st.markdown("""
