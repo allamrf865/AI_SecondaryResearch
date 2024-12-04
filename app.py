@@ -8,6 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple
+from wordcloud import WordCloud
 
 # Set up page configurations
 st.set_page_config(page_title="Review Quality Analyzer", layout="centered")
@@ -89,34 +90,35 @@ if analyze_button:
             score = 100 if fk_score <= 10 else 70 if fk_score <= 14 else 30
             return score, fk_score
 
-        # Function to analyze evidence (references)
-        def evidence_analysis(text: str) -> Tuple[int, float]:
-            # Menangkap referensi URL dan DOI
-            url_doi_references = re.findall(r'\b(?:https?|www)\S+|doi:\S+', text)
-            
-            # Menangkap referensi berupa penulis dan tahun (Author, Year format)
-            author_year_references = re.findall(r'[A-Za-z]+(?:\s[A-Za-z]+)*,\s?\d{4}', text)
-            
-            # Menangkap referensi dalam format [1], [2], [3], dll.
-            number_references = re.findall(r'\[\d+\]', text)
+        # Complexity analysis
+        def complexity_analysis(text: str) -> Tuple[int, float]:
+            sentences = re.split(r'[.!?]', text)
+            avg_sentence_length = np.mean([len(sentence.split()) for sentence in sentences])
+            word_complexity = np.mean([len(word) for word in re.findall(r'\b\w+\b', text)])  # Average word length
+            return avg_sentence_length, word_complexity
 
-            # Gabungkan semua jenis referensi menjadi satu set untuk mendapatkan referensi unik
-            all_references = set(url_doi_references + author_year_references + number_references)
+        # Thematic Consistency (Detecting themes based on frequent words)
+        def thematic_consistency(text: str) -> Tuple[int, str]:
+            vectorizer = CountVectorizer(stop_words='english', ngram_range=(1, 2), max_features=20)
+            X = vectorizer.fit_transform([text])
+            features = vectorizer.get_feature_names_out()
+            freq_terms = sorted(zip(features, X.sum(axis=0).A1), key=lambda x: x[1], reverse=True)[:5]
+            themes = [term[0] for term in freq_terms]
+            consistency_score = len(set(themes))  # Number of distinct themes
+            return consistency_score, ', '.join(themes)
 
-            # Menghitung jumlah referensi unik
-            num_unique_references = len(all_references)
-            
-            # Skor keberagaman referensi
-            diversity_score = min(100, num_unique_references * 10)  # Skor maksimal 100 berdasarkan referensi unik
-            
-            return num_unique_references, diversity_score
+        # Textual Diversity (unique words / total words)
+        def textual_diversity(text: str) -> float:
+            unique_words = set(re.findall(r'\b\w+\b', text.lower()))
+            total_words = len(re.findall(r'\b\w+\b', text.lower()))
+            diversity_score = len(unique_words) / total_words
+            return diversity_score
 
-        # Methodology analysis: Check for methodological references
-        def methodology_analysis(text: str) -> Tuple[int, str]:
-            methodology_terms = ["methodology", "statistical method", "sampling", "effect size"]
-            methodology_score = sum(term in text.lower() for term in methodology_terms)
-            methodology_quality = "Good" if methodology_score >= 2 else "Average"
-            return methodology_score, methodology_quality
+        # Scientific Rigor (checking if certain scientific terms are present)
+        def scientific_rigor(text: str) -> int:
+            scientific_terms = ["hypothesis", "methodology", "control", "data", "statistical", "result", "significance"]
+            score = sum(term in text.lower() for term in scientific_terms)
+            return score
 
         # Bias Analysis: Publication and selection bias (very simplified)
         def bias_analysis(text: str) -> Tuple[str, str]:
@@ -141,58 +143,65 @@ if analyze_button:
                 "EBCR": ["introduction", "methods", "results", "conclusion"]
             }
             found_sections = {section: (section in text.lower()) for section in sections.get(review_type, [])}
-            completeness_score = sum(found_sections.values()) / len(found_sections) * 100
-            return completeness_score, found_sections
+            completeness = sum(found_sections.values()) / len(sections.get(review_type, [])) * 100
+            return completeness, found_sections
 
-        # Cohesion analysis: Using Cosine Similarity
-        def cohesion_analysis(sentences: List[str]) -> Tuple[int, float]:
-            try:
-                vectorizer = CountVectorizer().fit_transform(sentences)
-                vectors = vectorizer.toarray()
-                avg_cohesion = cosine_similarity(vectors).mean()
-                score = 100 if avg_cohesion >= 0.5 else 70 if avg_cohesion >= 0.3 else 30
-            except Exception:
-                avg_cohesion = 0
-                score = 0
-            return score, avg_cohesion
-
-        # Perform analysis on document
+        # Apply all functions
         readability_result, fk_score = readability_score(text)
-        evidence_count, evidence_diversity = evidence_analysis(text)
-        methodology_score, methodology_quality = methodology_analysis(text)
+        avg_sentence_length, word_complexity = complexity_analysis(text)
+        thematic_score, themes = thematic_consistency(text)
+        diversity_score = textual_diversity(text)
+        scientific_score = scientific_rigor(text)
         bias_score, publication_bias = bias_analysis(text)
         scope_result = scope_of_research(text)
         structure_result, found_sections = structure_completeness(text, review_type)
-        cohesion_result, avg_cohesion = cohesion_analysis(sentences)
 
-        # Final score
-        final_score = (readability_result + evidence_diversity + methodology_score + cohesion_result) / 4
-        quality_level = "High" if final_score > 85 else "Standard" if final_score >= 70 else "Low"
+        # Calculating final quality score based on different factors
+        final_score = (readability_result + thematic_score * 10 + diversity_score * 100 + scientific_score * 10 + structure_result) / 5
+
+        # Quality level based on score
+        quality_level = "Q1" if final_score > 85 else "Q2" if final_score > 70 else "Q3" if final_score > 50 else "Q4"
+        sinta_level = "Sinta 1" if final_score > 85 else "Sinta 2" if final_score > 70 else "Sinta 3" if final_score > 50 else "Sinta 4"
 
         # Display results
         st.subheader("Analysis Results:")
         st.write(f"**Readability Score (FKG)**: {fk_score} (Grade: {readability_result})")
-        st.write(f"**Number of References**: {evidence_count}")
-        st.write(f"**Evidence Diversity Score**: {evidence_diversity}")
-        st.write(f"**Methodology Quality**: {methodology_quality}")
+        st.write(f"**Thematic Consistency Score**: {thematic_score} (Themes: {themes})")
+        st.write(f"**Textual Diversity**: {diversity_score:.2f}")
+        st.write(f"**Scientific Rigor**: {scientific_score}")
         st.write(f"**Bias in Selection**: {bias_score}")
         st.write(f"**Publication Bias**: {publication_bias}")
-        st.write(f"**Research Scope**: {scope_result}")
-        st.write(f"**Structure Completeness**: {structure_result}% - {found_sections}")
-        st.write(f"**Cohesion Score**: {avg_cohesion:.2f}")
-        st.write(f"**Final Quality Level**: {quality_level}")
-        st.write("### Recommendations:")
-        st.write("- Ensure clear explanation of methodology and effect size.")
-        st.write("- Include diverse sources and references.")
+        st.write(f"**Scope of Research**: {scope_result}")
+        st.write(f"**Structural Completeness**: {structure_result}% - {found_sections}")
+        st.write(f"**Final Quality Score**: {final_score:.2f}")
+        st.write(f"**Journal Recommendation**: {quality_level} ({sinta_level})")
 
-        # Visualize results
-        st.write("### Score Overview")
-        metrics = ["Readability", "Evidence Diversity", "Methodology Quality", "Cohesion"]
-        scores = [readability_result, evidence_diversity, methodology_score, cohesion_result]
-        
+        # Visualizations
+
+        # 1. Word Cloud
+        wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+        st.image(wordcloud.to_array(), caption="Word Cloud", use_column_width=True)
+
+        # 2. Sentence Length Distribution
+        sentence_lengths = [len(sentence.split()) for sentence in sentences]
         plt.figure(figsize=(8, 5))
-        plt.bar(metrics, scores, color=['blue', 'green', 'red', 'purple'])
-        plt.title("Document Analysis Scores")
-        plt.ylabel("Score")
-        plt.ylim(0, 100)
+        plt.hist(sentence_lengths, bins=20, color='lightblue', edgecolor='black')
+        plt.title("Sentence Length Distribution")
+        plt.xlabel("Sentence Length (Words)")
+        plt.ylabel("Frequency")
+        st.pyplot()
+
+        # 3. Complexity and Diversity Graph
+        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Sentence Complexity
+        ax[0].bar(["Avg Sentence Length", "Avg Word Length"], [avg_sentence_length, word_complexity], color='purple')
+        ax[0].set_title("Text Complexity Analysis")
+        ax[0].set_ylabel("Length / Complexity")
+
+        # Textual Diversity
+        ax[1].bar(["Diversity Score"], [diversity_score], color='green')
+        ax[1].set_title("Textual Diversity")
+        ax[1].set_ylabel("Score")
+
         st.pyplot()
