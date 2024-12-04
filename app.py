@@ -161,7 +161,7 @@ if analyze_button:
 
         # Quality level based on score
         quality_level = "Q1" if final_score > 85 else "Q2" if final_score > 70 else "Q3" if final_score > 50 else "Q4"
-        sinta_level = "Sinta 1" if final_score > 85 else "Sinta 2" if final_score > 70 else "Sinta 3" if final_score > 50 else "Sinta 4"
+        sinta_level = "Sinta 1" if final_score > 85 else "Sinta 2" if final_score > 70 else "Sinta 3" if final_score > 50 else "Sinta 4 atau 5"
 
         # Display results
         st.subheader("Analysis Results:")
