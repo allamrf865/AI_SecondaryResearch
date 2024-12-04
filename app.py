@@ -24,7 +24,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header and instructions
-st.markdown("<h1 class='header'>Review Quality Analyzer</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='header'>📚Review Quality Analyzer📚</h1>", unsafe_allow_html=True)
 st.write("Upload a PDF or Word file, select the review type, and get a detailed quality analysis! ✨")
 
 # Footer Branding
